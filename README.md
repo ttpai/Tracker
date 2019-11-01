@@ -8,27 +8,29 @@ Tracker 是Android 上的一个用户行为跟踪框架，根据预先订阅的�
 如何接入？
 
 在project中的build.gradle 中
-    
+```    
     dependencies {
       classpath 'com.hujiang.aspectjx:gradle-android-plugin-aspectjx:2.0.4'
     }
-    
+ ```   
  在app的build.gradle 中
-    
+  ```  
      apply plugin: 'com.hujiang.android-aspectjx'
   
     dependencies {
         implementation 'com.ttp.analysis:tracker:1.0.0'
     }
+ ```
  在application 中注册
- 
+ ```
     @Override
     public void onCreate() {
         super.onCreate();
         Track.initTrack(getApplication());
     }
-
+```
  如何使用？
+ 
  监听AActivity 跳转到 某页面事件：
  ```
   Track.from(AActivity.class).to(BActivity.class).subscribe(new OnSubscribe<Intent>() {
