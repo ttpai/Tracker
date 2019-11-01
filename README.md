@@ -6,11 +6,13 @@ Tracker 是Android 上的一个用户行为跟踪框架，根据预先订阅的�
 
 如何接入？
 在project中的build.gradle 中
+    
     dependencies {
       classpath 'com.hujiang.aspectjx:gradle-android-plugin-aspectjx:2.0.4'
     }
     
  在app的build.gradle 中
+    
      apply plugin: 'com.hujiang.android-aspectjx'
   
     dependencies {
@@ -26,6 +28,7 @@ Tracker 是Android 上的一个用户行为跟踪框架，根据预先订阅的�
 
  如何使用？
  监听AActivity 跳转到 某页面事件：
+ 
   Track.from(AActivity.class).to(BActivity.class).subscribe(new OnSubscribe<Intent>() {
             @Override
             public void call(Intent intent) {
@@ -34,6 +37,7 @@ Tracker 是Android 上的一个用户行为跟踪框架，根据预先订阅的�
         });
   
  监听AActivity 中的某view被点击：
+ 
   Track.from(AActivity.class).viewClick(R.id.button).subscribe(new OnSubscribe<View>() {
             @Override
             public void call(View view) {
