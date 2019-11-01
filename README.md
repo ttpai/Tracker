@@ -18,7 +18,7 @@ Tracker 是Android 上的一个用户行为跟踪框架，根据预先订阅的�
      apply plugin: 'com.hujiang.android-aspectjx'
   
     dependencies {
-        implementation 'com.ttp.analysis:tracker:1.0.0'
+        implementation 'com.github.ttpai:Tracker:1.0.1'
     }
  ```
  在application 中注册
