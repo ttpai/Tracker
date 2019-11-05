@@ -15,11 +15,11 @@ buildscript {
         classpath 'com.hujiang.aspectjx:gradle-android-plugin-aspectjx:2.0.4'
     }
     allprojects {
-		repositories {
-			...
-			maven { url 'https://jitpack.io' }
-		}
+	repositories {
+	    ...
+	    maven { url 'https://jitpack.io' }
 	}
+    }
  }
  ```   
  在app的build.gradle 中
@@ -34,8 +34,8 @@ buildscript {
  ```
 @Override
 public void onCreate() {
-   super.onCreate();
-   Track.initTrack(getApplication());
+    super.onCreate();
+    Track.initTrack(getApplication());
 }
 ```
  如何使用？
@@ -43,18 +43,18 @@ public void onCreate() {
  监听AActivity 跳转到 某页面事件：
  ```
 Track.from(AActivity.class).to(BActivity.class).subscribe(new OnSubscribe<Intent>() {
-          @Override
-          public void call(Intent intent) {
-              Log.d(TAG, "A->B");
-          }
-    });
+    @Override
+    public void call(Intent intent) {
+        Log.d(TAG, "A->B");
+    }
+});
   ```
  监听AActivity 中的某view被点击：
  ```
   Track.from(AActivity.class).viewClick(R.id.button).subscribe(new OnSubscribe<View>() {
-            @Override
-            public void call(View view) {
-                Log.d(TAG, "A.click(R.id.button)");
-            }
-        });
+      @Override
+      public void call(View view) {
+          Log.d(TAG, "A.click(R.id.button)");
+      }
+ });
 ```
