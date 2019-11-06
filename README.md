@@ -9,43 +9,52 @@ Tracker 是Android 上的一个用户行为跟踪框架，根据预先订阅的�
 
 在project中的build.gradle 中
 ```    
+buildscript {
     dependencies {
-      classpath 'com.hujiang.aspectjx:gradle-android-plugin-aspectjx:2.0.4'
+        ...
+        classpath 'com.hujiang.aspectjx:gradle-android-plugin-aspectjx:2.0.4'
     }
+    allprojects {
+	repositories {
+	    ...
+	    maven { url 'https://jitpack.io' }
+	}
+    }
+ }
  ```   
  在app的build.gradle 中
   ```  
-     apply plugin: 'com.hujiang.android-aspectjx'
+ apply plugin: 'com.hujiang.android-aspectjx'
   
-    dependencies {
-        implementation 'com.ttp.analysis:tracker:1.0.0'
-    }
+ dependencies {
+     implementation 'com.github.ttpai:Tracker:1.0.1'
+ }
  ```
  在application 中注册
  ```
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        Track.initTrack(getApplication());
-    }
+@Override
+public void onCreate() {
+    super.onCreate();
+    Track.initTrack(getApplication());
+}
 ```
  如何使用？
  
  监听AActivity 跳转到 某页面事件：
  ```
-  Track.from(AActivity.class).to(BActivity.class).subscribe(new OnSubscribe<Intent>() {
-            @Override
-            public void call(Intent intent) {
-                Log.d(TAG, "A->B");
-            }
-        });
+Track.from(AActivity.class).to(BActivity.class).subscribe(new OnSubscribe<Intent>() {
+    @Override
+    public void call(Intent intent) {
+        Log.d(TAG, "A->B");
+    }
+});
   ```
  监听AActivity 中的某view被点击：
  ```
   Track.from(AActivity.class).viewClick(R.id.button).subscribe(new OnSubscribe<View>() {
-            @Override
-            public void call(View view) {
-                Log.d(TAG, "A.click(R.id.button)");
-            }
-        });
+      @Override
+      public void call(View view) {
+          Log.d(TAG, "A.click(R.id.button)");
+      }
+ });
 ```
