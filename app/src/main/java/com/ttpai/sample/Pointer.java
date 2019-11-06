@@ -1,17 +1,23 @@
 package com.ttpai.sample;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Intent;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.View;
+import android.widget.PopupWindow;
+import android.widget.TextView;
 
 import com.ttpai.sample.fragment.MainFragment;
 import com.ttpai.sample.fragment.TabFragment;
 import com.ttpai.sample.fragment.TabFragmentActivity;
 import com.ttpai.track.Track;
+import com.ttpai.track.annotation.DialogButtonID;
+import com.ttpai.track.callback.IFilter;
 import com.ttpai.track.callback.OnEvent;
 import com.ttpai.track.callback.OnSubscribe;
+import com.ttpai.track.callback.OnTrackSubscribe;
 
 import java.util.Arrays;
 
@@ -21,6 +27,7 @@ import java.util.Arrays;
  * Date: 2019-08-19
  * Description: 集中埋点类
  */
+
 public class Pointer {
 
     private static Pointer sInstance;
@@ -42,7 +49,7 @@ public class Pointer {
 
 
     public void registEvent() {
-        Track<?> track = Track.from(AActivity.class).to(BActivity.class);
+
 
         Track.from(AActivity.class).to(BActivity.class).subscribe(new OnEvent() {
             @Override
@@ -73,13 +80,13 @@ public class Pointer {
             }
         });
 
-        Track.from(AActivity.class).to(BActivity.class).to(DActivity.class).viewClick(R.id.button).disposable(new OnSubscribe<View>() {
+        Track.from(AActivity.class).fragmentOnHiddenChanged(MainFragment.class).filter(new IFilter<Fragment>() {
             @Override
-            public void call(View view) {
-                Log.d(TAG, "A->D.click(button) =" + view);
+            public boolean filter(Fragment fragment) {
+                return !fragment.isHidden();
             }
         });
-        /*
+
         Track<Intent> track = Track.from(AActivity.class).to(BActivity.class).subscribe(new OnTrackSubscribe<Intent>() {
             @Override
             public void call(Intent intent) {
@@ -176,7 +183,7 @@ public class Pointer {
             }
         });
 
-        Track.fromObject(AActivity.class).onMethodCall(View.class, "setVisibili", TextView.class)
+        Track.fromObject(AActivity.class).onMethodCall("setVisibili", TextView.class)
                 .subscribe(new OnSubscribe<Object[]>() {
                     @Override
                     public void call(Object[] objects) {
@@ -193,7 +200,7 @@ public class Pointer {
 
             }
         });
-        Track.from(Activity.class).onMethodCall(void.class,"onClick", View.class)
+        Track.from(Activity.class).onMethodCall("onClick", View.class)
                 .subscribe(new OnSubscribe<Object[]>() {
             @Override
             public void call(Object[] objects) {
@@ -232,7 +239,7 @@ public class Pointer {
                 Log.d(TAG, "A->B.onCreate " + activity);
             }
         });
-        toSecondTrack.activityOnStarted().subscribe(new OnSubscribe<Activity>() {
+  /*      toSecondTrack.activityOnStarted().subscribe(new OnSubscribe<Activity>() {
             @Override
             public void call(Activity activity) {
                 Log.d(TAG, "A->B.onActivityStarted " + activity);
@@ -269,8 +276,8 @@ public class Pointer {
             public void call(Activity activity) {
                 Log.d(TAG, "A->B.onActivitySaveInstanceState " + activity);
             }
-        });
-        Track.from(AActivity.class).onMethodCall(int.class, "getHeight").subscribe(new OnSubscribe<Object[]>() {
+        });*/
+        Track.from(AActivity.class).onMethodCall( "getHeight").subscribe(new OnSubscribe<Object[]>() {
             @Override
             public void call(Object[] objects) {
                 Log.d(TAG, "AActivity onMethodCall.getHeight args:" + Arrays.toString(objects));
@@ -278,7 +285,7 @@ public class Pointer {
             }
         });
 
-        Track.fromObject(View.OnClickListener.class).onMethodCall(void.class, "onClick", View.class).subscribe(new OnSubscribe<Object[]>() {
+        Track.fromObject(View.OnClickListener.class).onMethodCall("onClick", View.class).subscribe(new OnSubscribe<Object[]>() {
             @Override
             public void call(Object[] args) {
                 Log.d(TAG, "AActivity OnClickListener args:" + Arrays.toString(args));
@@ -335,7 +342,7 @@ public class Pointer {
                 Log.d(TAG, "TabFragmentActivity->fragmentOnCreate.click:R.id.text->B :" + intent);
             }
         });
-        frgActFrom.fragmentOnStart(MainFragment.class).subscribe(new OnSubscribe<Fragment>() {
+       /* frgActFrom.fragmentOnStart(MainFragment.class).subscribe(new OnSubscribe<Fragment>() {
             @Override
             public void call(Fragment fragment) {
                 Log.d(TAG, "TabFragmentActivity->fragmentOnStart :" + fragment);
@@ -403,17 +410,15 @@ public class Pointer {
             public void call(Fragment fragment) {
                 Log.d(TAG, "fromObject->fragmentOnStart :" + fragment);
             }
-        });*/
-/*
+        });
         track.fromObject(DialogInterface.OnDismissListener.class)
-                .onMethodCall(void.class,"onDismiss",DialogInterface.class).subscribe(new OnSubscribe<Object[]>() {
+                .onMethodCall("onDismiss",DialogInterface.class).subscribe(new OnSubscribe<Object[]>() {
             @Override
             public void call(Object[] args) {
                 Log.d(TAG, "A->B.onMethodCall(onDismiss) :"+args);
             }
-        });*/
-/*
-
+        });
+*/
         Track.from(AActivity.class).to(BActivity.class).subscribe(new OnSubscribe<Intent>() {
             @Override
             public void call(Intent intent) {
@@ -421,17 +426,9 @@ public class Pointer {
             }
         });
 
-*/
 
-        Track<?> mainTrack = Track.from(TabFragmentActivity.class).fragmentSetUserVisibleHint(MainFragment.class)
-                .filter(fragment -> fragment.getUserVisibleHint())
-                .mutexWith(Track.from(TabFragmentActivity.class).fragmentSetUserVisibleHint(MainFragment.class).filter(fragment -> !fragment.getUserVisibleHint()))
-                .subscribe(new OnSubscribe<Fragment>() {
-                    @Override
-                    public void call(Fragment fragment) {
-                        Log.d(TAG, "MainFragment :" + fragment.getUserVisibleHint());
-                    }
-                });
+        Track<?> mainTrack = Track.from(TabFragmentActivity.class).fragmentSetUserVisibleHint(MainFragment.class).filter(fragment -> fragment.getUserVisibleHint())
+                .mutexWith(Track.from(TabFragmentActivity.class).fragmentSetUserVisibleHint(MainFragment.class).filter(fragment -> !fragment.getUserVisibleHint()));
 
         mainTrack.viewClick(R.id.button6)
                 .subscribe(view -> Log.d(TAG, "main.click(6) :" + view));
@@ -462,8 +459,7 @@ public class Pointer {
                 Log.d(TAG, ".onClick join A->C :" + intent);
             }
         });
-/*
-        Track<Object[]> onclick=Track.fromObject(View.OnClickListener.class).onMethodCall(void.class, "onClick", View.class)
+        Track<Object[]> onclick=Track.fromObject(View.OnClickListener.class).onMethodCall("onClick", View.class)
                 .subscribe(new OnSubscribe<Object[]>() {
                     @Override
                     public void call(Object[] objects) {
@@ -483,7 +479,7 @@ public class Pointer {
             public void call(Object[] objects) {
                 Log.d(TAG,"A->B join click :"+ Arrays.toString(objects));
             }
-        });*/
+        });
 
     }
 }

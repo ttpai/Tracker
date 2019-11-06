@@ -599,9 +599,7 @@ public class TrackManager {
     //兼容 onMethodCall
     private <T> void findTrack(Class fromClass, T data, IFindTrack iFind, Object target, boolean isOnMethodCall) {
 
-        //先从当前已点亮的track，找符合条件的Node
-//        findInLightTracks(fromClass, data, iFind, isOnMethodCall);
-        //再从所有的track寻找到新的track，并点亮
+        //从所有的track寻找到新的track，并点亮
         findInAllTracks(fromClass, data, iFind, target, isOnMethodCall);
     }
 

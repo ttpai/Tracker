@@ -32,7 +32,7 @@ public class AActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         ActivityMainBinding binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
-        binding.setData(new Person(10, "张三"));
+        binding.setData(new Person(10, "请打开Pointer.java 查看log"));
 
         final TextView view = findViewById(R.id.tv_text);
 
