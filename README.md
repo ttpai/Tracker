@@ -60,6 +60,7 @@ Track.from(AActivity.class).to(BActivity.class).subscribe(new OnSubscribe<Intent
 ```
 #### 更多
 由于AOP 是基于 [aspectjx](https://github.com/HujiangTechnology/gradle_plugin_android_aspectjx) ，在此感谢 aspectjx 项目的贡献  
+更多文档  
 [Tracker Api 操作符](https://github.com/ttpai/Tracker/wiki/Tracker-Api-%E6%93%8D%E4%BD%9C%E7%AC%A6)  
 [Android Tracker 原理](https://github.com/ttpai/Tracker/wiki/Android-Tracker-%E5%8E%9F%E7%90%86)  
 
