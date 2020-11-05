@@ -40,6 +40,6 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 
-    implementation project(path: ':tracker')
-
+//    implementation project(path: ':tracker')
+    implementation 'com.github.ttpai:Tracker:1.0.1'
 }

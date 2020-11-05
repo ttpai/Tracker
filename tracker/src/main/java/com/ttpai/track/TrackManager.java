@@ -6,12 +6,13 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.text.TextUtils;
 import android.util.SparseArray;
 import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.widget.PopupWindow;
+
+import androidx.fragment.app.Fragment;
 
 import com.ttpai.track.annotation.AnyClass;
 import com.ttpai.track.callback.IFindTrack;

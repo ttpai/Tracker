@@ -1,6 +1,7 @@
 package com.ttpai.track.node.fragment;
 
-import android.support.v4.app.Fragment;
+
+import androidx.fragment.app.Fragment;
 
 import com.ttpai.track.node.activity.LifeCycleNode;
 

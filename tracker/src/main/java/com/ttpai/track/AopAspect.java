@@ -5,10 +5,11 @@ import android.app.Application;
 import android.app.Dialog;
 import android.content.ComponentName;
 import android.content.Intent;
-import android.support.v4.app.Fragment;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.PopupWindow;
+
+import androidx.fragment.app.Fragment;
 
 import com.ttpai.track.node.NodeSpec;
 
@@ -197,47 +198,47 @@ public class AopAspect {
         TrackManager.getInstance().popupDismiss(popup);
     }
 
-    @Before("call(public void android.support.v4.app.Fragment.onCreate(android.os.Bundle)) && target(android.support.v4.app.Fragment)")
+    @Before("call(public void androidx.fragment.app.Fragment.onCreate(android.os.Bundle)) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnCreate(JoinPoint point) {
 //        Log.d(TAG, "fragmentOnCreate:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONCREATE, (Fragment) point.getTarget());
     }
 
-    @Before("call(public void android.support.v4.app.Fragment.onStart()) && target(android.support.v4.app.Fragment)")
+    @Before("call(public void androidx.fragment.app.Fragment.onStart()) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnStart(JoinPoint point) {
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONSTART, (Fragment) point.getTarget());
 //
 //        Log.d(TAG, "fragmentOnStart:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
     }
 
-    @Before("call(public void android.support.v4.app.Fragment.onResume()) && target(android.support.v4.app.Fragment)")
+    @Before("call(public void androidx.fragment.app.Fragment.onResume()) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnResume(JoinPoint point) {
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONRESUMED, (Fragment) point.getTarget());
 
 //        Log.d(TAG, "fragmentOnResume:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
     }
 
-    @Before("call(public void android.support.v4.app.Fragment.onPause()) && target(android.support.v4.app.Fragment)")
+    @Before("call(public void androidx.fragment.app.Fragment.onPause()) && target(androidx.fragment.app.Fragment)")
     public void fragmentPause(JoinPoint point) {
 //        Log.d(TAG, "fragmentPause:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONPAUSE, (Fragment) point.getTarget());
 
     }
 
-    @Before("call(public void android.support.v4.app.Fragment.onStop()) && target(android.support.v4.app.Fragment)")
+    @Before("call(public void androidx.fragment.app.Fragment.onStop()) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnStop(JoinPoint point) {
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONSTOP, (Fragment) point.getTarget());
 //        Log.d(TAG, "fragmentOnStop:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
     }
 
-    @Before("call(public void android.support.v4.app.Fragment.onDestroy()) && target(android.support.v4.app.Fragment)")
+    @Before("call(public void androidx.fragment.app.Fragment.onDestroy()) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnDestroy(JoinPoint point) {
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONDESTROY, (Fragment) point.getTarget());
 //        Log.d(TAG, "fragmentOnDestroy:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
 
     }
 
-    @After("call(public void android.support.v4.app.Fragment.onHiddenChanged(boolean)) && target(android.support.v4.app.Fragment)")
+    @After("call(public void androidx.fragment.app.Fragment.onHiddenChanged(boolean)) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnHiddenChanged(JoinPoint point) {
 //        TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONDESTROY, (Fragment) point.getTarget());
 //        Log.d(TAG, "fragmentOnHiddenChanged:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
@@ -245,7 +246,7 @@ public class AopAspect {
     }
 
 
-    @After("call(public void android.support.v4.app.Fragment.setUserVisibleHint(boolean)) && target(android.support.v4.app.Fragment)")
+    @After("call(public void androidx.fragment.app.Fragment.setUserVisibleHint(boolean)) && target(androidx.fragment.app.Fragment)")
     public void fragmentSetUserVisible(JoinPoint point) {
         //set 优先，所以after
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_SET_USER_VISIBLE, (Fragment) point.getTarget());

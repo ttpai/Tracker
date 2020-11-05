@@ -4,11 +4,12 @@ import android.app.Activity;
 import android.app.Application;
 import android.app.Dialog;
 import android.content.Intent;
-import android.support.annotation.NonNull;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
 import android.view.View;
 import android.widget.PopupWindow;
+
+import androidx.annotation.NonNull;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
 
 import com.ttpai.track.annotation.AnyClass;
 import com.ttpai.track.annotation.DialogButtonID;
