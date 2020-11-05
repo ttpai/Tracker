@@ -1,9 +1,10 @@
 package com.ttpai.sample;
 
 import android.content.DialogInterface;
-import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.View;
+
+import androidx.appcompat.app.AlertDialog;
 
 import com.ttpai.track.annotation.OnMethodCall;
 
@@ -19,7 +20,7 @@ public class SecondOnClick implements View.OnClickListener {
     @Override
     public void onClick(View v) {
 
-        android.support.v7.app.AlertDialog.Builder builder = new AlertDialog.Builder(v.getContext())
+        AlertDialog.Builder builder = new AlertDialog.Builder(v.getContext())
                 .setTitle("title")
                 .setMessage("I'm a Dialog")
                 .setNegativeButton("确定", new DialogInterface.OnClickListener() {
