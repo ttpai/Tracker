@@ -12,7 +12,10 @@ Tracker 是Android 上的一个用户行为跟踪框架，根据预先订阅的�
 buildscript {
     dependencies {
         ...
-        classpath 'com.hujiang.aspectjx:gradle-android-plugin-aspectjx:2.0.4'
+        //gradle 4.0+
+        classpath 'com.android.tools.build:gradle:4.0.1'
+
+        classpath 'com.hujiang.aspectjx:gradle-android-plugin-aspectjx:2.0.10'
     }
     allprojects {
 	repositories {
@@ -27,7 +30,7 @@ buildscript {
  apply plugin: 'com.hujiang.android-aspectjx'
   
  dependencies {
-     implementation 'com.github.ttpai:Tracker:1.0.1'
+     implementation 'com.github.ttpai:Tracker:1.0.3'
  }
  ```
  在application 中注册
