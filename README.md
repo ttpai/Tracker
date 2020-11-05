@@ -34,6 +34,9 @@ buildscript {
      implementation 'com.github.ttpai:Tracker:1.0.3'
  }
  ```
+ 注：
+ 当前分支支持的是AndroidX + gradle 4.0 以上。如果你使用support 包，请切到support 分支查看使用。
+
  在application 中注册
  ```
 @Override
