@@ -7,9 +7,9 @@ Tracker 是Android 上的一个用户行为跟踪框架，根据预先订阅的�
 
 支持 全量埋点 的监听，示例参考 com.ttpai.sample.FullPointer.java
 
-1、监听 所有view 的点击
-2、监听 所有页面(activity+Fragment) 的 进入、退出、可见与不可见
-3、监听 所有 dialog/popupWindow 的show、dismiss
+1. 监听 所有view 的点击
+2. 监听 所有页面(activity+Fragment) 的 进入、退出、可见与不可见
+3. 监听 所有 dialog/popupWindow 的show、dismiss
 
 注？
  Tracker 框架 只是一个监听的框架，如监听到view的点击，回调触发，具体的埋点逻辑需要自己实现，因为各家埋点逻辑不同，不可能统一实现
