@@ -37,6 +37,6 @@ dependencies {
     api ("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.2.0"){
         exclude group: 'androidx.lifecycle'
     }
-    implementation project(path: ':tracker')
-//    implementation 'com.github.ttpai:Tracker:1.0.3'
+//    implementation project(path: ':tracker')
+    implementation 'com.github.ttpai:Tracker:1.0.4'
 }

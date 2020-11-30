@@ -35,7 +35,7 @@ public class AActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         ActivityMainBinding binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
-        binding.setData(new Person(10, "请打开Pointer.java 查看log"));
+        binding.setData(new Person(10, "请打开Pointer.java 查看log"+"\n请查看 FullPointer.java 查看全局事件监听 示例"));
 
         final TextView view = findViewById(R.id.tv_text);
 
