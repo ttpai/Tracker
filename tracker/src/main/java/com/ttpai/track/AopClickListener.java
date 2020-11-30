@@ -2,7 +2,7 @@ package com.ttpai.track;
 
 import android.view.View;
 
-public class AopClickListener implements View.OnClickListener {
+class AopClickListener implements View.OnClickListener {
 
     View.OnClickListener l;
 
@@ -15,10 +15,7 @@ public class AopClickListener implements View.OnClickListener {
     }
     @Override
     public void onClick(View v) {
-        int id = v.getId();
-        if (id != View.NO_ID) {
-            TrackManager.getInstance().viewClick(v);
-        }
+        TrackManager.getInstance().viewClick(v);
         l.onClick(v);
     }
 }

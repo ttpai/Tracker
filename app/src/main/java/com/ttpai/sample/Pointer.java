@@ -154,7 +154,7 @@ public class Pointer {
                 Log.d(TAG, "A.viewLongClick(R.id.button5) v:" + view + " t=" + Thread.currentThread());
             }
         });
-        Track.from(AActivity.class).viewClick(R.id.tv_text).viewVisibility(R.id.tv_text).subscribe(new OnSubscribe<View>() {
+        /*Track.from(AActivity.class).viewClick(R.id.tv_text).viewVisibility(R.id.tv_text).subscribe(new OnSubscribe<View>() {
             @Override
             public void call(View view) {
                 Log.d(TAG, "A.viewClick(R.id.tv_text).viewVisibility(R.id.tv_text) view:" + view.getVisibility() + " v:" + view + " t=" + Thread.currentThread());
@@ -165,7 +165,7 @@ public class Pointer {
             public void call(View view) {
                 Log.d(TAG, "A.viewVisibility(R.id.tv_text) view:" + view.getVisibility() + " v:" + view + " t=" + Thread.currentThread());
             }
-        });
+        });*/
         Track.fromAnyActivity().toAnyActivity().subscribe(new OnSubscribe<Intent>() {
             @Override
             public void call(Intent intent) {
@@ -482,6 +482,10 @@ public class Pointer {
                 Log.d(TAG,"A->B join click :"+ Arrays.toString(objects));
             }
         });
+
+
+
+        //全量埋点
 
     }
 }

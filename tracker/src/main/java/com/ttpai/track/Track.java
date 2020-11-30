@@ -29,7 +29,6 @@ import com.ttpai.track.node.application.FromApplicationNode;
 import com.ttpai.track.node.dialog.DialogButtonClickNode;
 import com.ttpai.track.node.dialog.DismissDialogNode;
 import com.ttpai.track.node.dialog.ShowDialogNode;
-import com.ttpai.track.node.fragment.FragmentArgsNode;
 import com.ttpai.track.node.fragment.FragmentLifeCycleNode;
 import com.ttpai.track.node.other.FilterNode;
 import com.ttpai.track.node.other.JoinNode;
@@ -37,7 +36,6 @@ import com.ttpai.track.node.popup.DismissPopupNode;
 import com.ttpai.track.node.popup.ShowPopupNode;
 import com.ttpai.track.node.view.ViewClickNode;
 import com.ttpai.track.node.view.ViewLongClickNode;
-import com.ttpai.track.node.view.ViewVisibilityNode;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -57,7 +55,6 @@ public class Track<T> {
     }
 
     Node getNode() {
-
         return mNode;
     }
 
@@ -162,13 +159,25 @@ public class Track<T> {
         return add(new ViewClickNode(fromClass, viewId));
     }
 
+    //any view click
+    public Track<View> anyViewClick() {
+        return viewClick(TrackManager.ANY_VIEW);
+    }
+
     //view setVisibility
+
+    /**
+     * 无应用场景，不再支持。
+     * @param viewId
+     * @return
+     */
+   /* @Deprecated
     public Track<View> viewVisibility(int viewId) {
         TrackManager.getInstance().registerViewId(viewId);
         Class fromClass = getFromClass();
         return add(new ViewVisibilityNode(fromClass, viewId));
     }
-
+*/
     public Track<View> viewLongClick(int viewId) {
         TrackManager.getInstance().registerViewId(viewId);
         Class fromClass = getFromClass();
@@ -411,6 +420,11 @@ public class Track<T> {
     }
 
 
+
+    public Track<T> subscribeAndUn(@NonNull OnEvent event) {
+        return this.subscribeAndUn((OnSubscribe) event);
+    }
+
     /**
      * 一次性的订阅
      * 此订阅事件只会触发一次，触发后立即解除注册
@@ -482,7 +496,9 @@ public class Track<T> {
     public Track<Fragment> fragmentOnCreate(Class<? extends Fragment> fragmentClass) {
         return addFragmentLifeCycleNode(fragmentClass, NodeSpec.TYPE_ONCREATE);
     }
-
+    public Track<Fragment> fragmentOnCreateView(Class<? extends Fragment> fragmentClass) {
+        return addFragmentLifeCycleNode(fragmentClass, NodeSpec.TYPE_ONCREATEView);
+    }
     public Track<Fragment> fragmentOnStart(Class<? extends Fragment> fragmentClass) {
         return addFragmentLifeCycleNode(fragmentClass, NodeSpec.TYPE_ONSTART);
     }
@@ -521,7 +537,16 @@ public class Track<T> {
      * @return
      */
     public Track<Fragment> fragmentOnHiddenChanged(Class<? extends Fragment> fragmentClass) {
-        return addFragmentArgsNode(fragmentClass, NodeSpec.TYPE_ONHIDDENCHANGED, AnyClass.class);
+        return addFragmentLifeCycleNode(fragmentClass, NodeSpec.TYPE_ONHIDDENCHANGED);
+    }
+
+    public Track<Fragment> fragmentOnHiddenChanged(Class<? extends Fragment> fragmentClass,final boolean filterIsHidden) {
+        return fragmentOnHiddenChanged(fragmentClass).filter(new IFilter<Fragment>() {
+            @Override
+            public boolean filter(Fragment fragment) {
+                return fragment.isHidden()==filterIsHidden;
+            }
+        });
     }
 
     /**
@@ -531,20 +556,18 @@ public class Track<T> {
      * @return
      */
     public Track<Fragment> fragmentSetUserVisibleHint(Class<? extends Fragment> fragmentClass) {
-        return addFragmentArgsNode(fragmentClass, NodeSpec.TYPE_SET_USER_VISIBLE, AnyClass.class);
+        return addFragmentLifeCycleNode(fragmentClass, NodeSpec.TYPE_SET_USER_VISIBLE);
     }
 
-    private <A> Track<Fragment> addFragmentArgsNode(Class<? extends Fragment> fragmentClass, int lifeCycleType, A args) {
+    public Track<Fragment> fragmentSetUserVisibleHint(Class<? extends Fragment> fragmentClass,final boolean filterIsVisibleToUser) {
+        return fragmentSetUserVisibleHint(fragmentClass).filter(new IFilter<Fragment>() {
+            @Override
+            public boolean filter(Fragment fragment) {
+                return fragment.getUserVisibleHint()==filterIsVisibleToUser;
+            }
+        });
 
-        Class fromClass = getFromClass();
-        checkClass(FragmentActivity.class, fromClass);
-        checkClass(Fragment.class, fragmentClass);
-
-        TrackManager.getInstance().registerObject(TrackManager.FRAGMENT_CLASS, fragmentClass);
-
-        return add(new FragmentArgsNode<A>(fromClass, fragmentClass, lifeCycleType, args));
     }
-
     /**
      * 路径互斥
      * 互斥：当有一条路径点亮时，其它路径全部熄灭
@@ -606,4 +629,5 @@ public class Track<T> {
         add(new JoinNode(trackBRootNode));
         return trackB;
     }
+
 }
