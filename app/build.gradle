@@ -38,5 +38,5 @@ dependencies {
         exclude group: 'androidx.lifecycle'
     }
 //    implementation project(path: ':tracker')
-    implementation 'com.github.ttpai:Tracker:1.0.3'
+    implementation 'com.github.ttpai:Tracker:1.0.4'
 }

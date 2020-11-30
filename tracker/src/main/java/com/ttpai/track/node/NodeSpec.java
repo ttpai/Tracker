@@ -26,6 +26,8 @@ public class NodeSpec {
 
     public static final int TYPE_START_ACTIVITY=1;//startActivity
     public static final int TYPE_ONCREATE =2;//onCreate
+    public static final int TYPE_ONCREATEView =12;//onCreateView
+
     public static final int TYPE_ONSTART =3;
     public static final int TYPE_ONRESUMED =4;
     public static final int TYPE_ONPAUSE =5;

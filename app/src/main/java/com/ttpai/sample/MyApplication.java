@@ -2,8 +2,6 @@ package com.ttpai.sample;
 
 import android.app.Application;
 
-import com.ttpai.track.Track;
-
 
 /**
  * FileName: MyApplication
@@ -16,7 +14,11 @@ public class MyApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        Track.initTrack(MyApplication.this);
+
+        //适合 全量埋点 的示例
+        FullPointer.getInstance().startPoints(this);
+//        Track.initTrack(MyApplication.this);
+        //适合 单事件与长事件 的示例
         Pointer.getInstance().registEvent();
 
     }

@@ -10,7 +10,6 @@ import android.view.View;
 import android.widget.PopupWindow;
 
 import androidx.fragment.app.Fragment;
-
 import com.ttpai.track.node.NodeSpec;
 
 import org.aspectj.lang.JoinPoint;
@@ -49,32 +48,27 @@ public class AopAspect {
     //可以兼容lambda.
     @Around("call(public void android.view.View+.setOnClickListener(android.view.View.OnClickListener+)) && target(android.view.View) && args(click)")
     public void setOnClickListenerAround(final ProceedingJoinPoint joinPoint, View.OnClickListener click) throws Throwable {
-        if (filterMethodRepeatEvent(joinPoint)) return;
-//        Log.d(TAG, "setOnClickListenerAround:" + joinPoint.getSourceLocation().getLine()+" "+joinPoint.getTarget()+" "+joinPoint.getThis());
-
-        if(click!=null){
-            View.OnClickListener nowClick = new AopClickListener(click);
-            joinPoint.proceed(new Object[]{nowClick});
+        if(click!=null && !filterMethodRepeatEventWithArg(joinPoint,click)){
+            joinPoint.proceed(new Object[]{new AopClickListener(click)});
         }else{
             joinPoint.proceed(new Object[]{click});
         }
     }
 
 
-    @After("call(public void android.view.View+.setVisibility(int)) && target(android.view.View)")
-    public void setViewVisibilityAfter(JoinPoint joinPoint) throws Throwable {
-        if (filterMethodRepeatEvent(joinPoint)) return;
-//        Log.d(TAG, "setViewVisibilityAfter:" + joinPoint.getSourceLocation().getLine() + " " + joinPoint.getTarget() + " " + joinPoint.getThis());
-        View view = (View) joinPoint.getTarget();//after
-        TrackManager.getInstance().viewSetVisibility(view);
-    }
-
+    /*
+     @After("call(public void android.view.View+.setVisibility(int)) && target(android.view.View)")
+     public void setViewVisibilityAfter(JoinPoint joinPoint) throws Throwable {
+         if (filterMethodRepeatEvent(joinPoint)) return;
+ //        Log.d(TAG, "setViewVisibilityAfter:" + joinPoint.getSourceLocation().getLine() + " " + joinPoint.getTarget() + " " + joinPoint.getThis());
+         View view = (View) joinPoint.getTarget();//after
+         TrackManager.getInstance().viewSetVisibility(view);
+     }
+ */
     @Around("call(public void android.view.View+.setOnLongClickListener(android.view.View.OnLongClickListener+)) && target(android.view.View) && args(click)")
     public void setOnLongClickListenerAround(final ProceedingJoinPoint joinPoint,final View.OnLongClickListener click) throws Throwable {
-        if (filterMethodRepeatEvent(joinPoint)) return;
-        if(click!=null){
-            View.OnLongClickListener nowClick = new AopLongClickListener(click);
-            joinPoint.proceed(new Object[]{nowClick});
+        if(click!=null && !filterMethodRepeatEventWithArg(joinPoint,click)){
+            joinPoint.proceed(new Object[]{new AopLongClickListener(click)});
         }else{
             joinPoint.proceed(new Object[]{click});
         }
@@ -85,8 +79,8 @@ public class AopAspect {
     }
 
 
-    @Around("startActivityForResult3()")
-    public void startActivityForResultAround(final ProceedingJoinPoint joinPoint) throws Throwable {
+    @Before("startActivityForResult3()")
+    public void startActivityForResultAround(final JoinPoint joinPoint) throws Throwable {
         if (filterMethodRepeatEventWithArg(joinPoint, joinPoint.getArgs()[0])) return;
 //        Log.d(TAG, "startActivityForResultAround:" + joinPoint.getSourceLocation().getLine() + " " + joinPoint.getTarget() + " " + joinPoint.getThis());
 
@@ -95,7 +89,6 @@ public class AopAspect {
         ComponentName to = intent.getComponent();
         if (to != null)//before
             TrackManager.getInstance().startActivity(thiz, to.getClassName(), intent);
-        joinPoint.proceed();
     }
 
     //兼容 application.startActivity
@@ -198,34 +191,40 @@ public class AopAspect {
         TrackManager.getInstance().popupDismiss(popup);
     }
 
-    @Before("call(public void androidx.fragment.app.Fragment.onCreate(android.os.Bundle)) && target(androidx.fragment.app.Fragment)")
+    @After("call(public void androidx.fragment.app.Fragment.onCreate(android.os.Bundle)) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnCreate(JoinPoint point) {
 //        Log.d(TAG, "fragmentOnCreate:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONCREATE, (Fragment) point.getTarget());
     }
 
-    @Before("call(public void androidx.fragment.app.Fragment.onStart()) && target(androidx.fragment.app.Fragment)")
+    @After(value = "call(public android.view.View androidx.fragment.app.Fragment.onCreateView(..)) && target(androidx.fragment.app.Fragment)")
+    public void fragmentOnCreateView(final JoinPoint point) throws Throwable {
+        if (filterMethodRepeatEvent(point)) return;
+        TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONCREATEView, (Fragment) point.getTarget());
+    }
+
+    @After("call(public void androidx.fragment.app.Fragment.onStart()) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnStart(JoinPoint point) {
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONSTART, (Fragment) point.getTarget());
 //
 //        Log.d(TAG, "fragmentOnStart:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
     }
 
-    @Before("call(public void androidx.fragment.app.Fragment.onResume()) && target(androidx.fragment.app.Fragment)")
+    @After("call(public void androidx.fragment.app.Fragment.onResume()) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnResume(JoinPoint point) {
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONRESUMED, (Fragment) point.getTarget());
 
 //        Log.d(TAG, "fragmentOnResume:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
     }
 
-    @Before("call(public void androidx.fragment.app.Fragment.onPause()) && target(androidx.fragment.app.Fragment)")
+    @After("call(public void androidx.fragment.app.Fragment.onPause()) && target(androidx.fragment.app.Fragment)")
     public void fragmentPause(JoinPoint point) {
 //        Log.d(TAG, "fragmentPause:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONPAUSE, (Fragment) point.getTarget());
 
     }
 
-    @Before("call(public void androidx.fragment.app.Fragment.onStop()) && target(androidx.fragment.app.Fragment)")
+    @After("call(public void androidx.fragment.app.Fragment.onStop()) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnStop(JoinPoint point) {
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONSTOP, (Fragment) point.getTarget());
 //        Log.d(TAG, "fragmentOnStop:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
@@ -253,6 +252,19 @@ public class AopAspect {
 //        Log.d(TAG, "fragmentSetUserVisible:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
 
     }
+
+/*
+    @Around("call(* com.ttpai.sample.Tools.test(java.lang.String)) && args(arg)")
+    public void onTestAround(final ProceedingJoinPoint joinPoint,String arg) throws Throwable {
+        System.out.println("onTestAround 1 args="+joinPoint.getArgs()+" joinPoint="+joinPoint+" "+arg);
+        joinPoint.proceed(new Object[]{"aaa"+arg});
+    }
+
+    @Around("call(public com.ttpai.sample.OnScrollListener+.new(..))")
+    public Object onOnScrollListenerAround(final ProceedingJoinPoint joinPoint) throws Throwable {
+        System.out.println("newOnScrollListener  args="+joinPoint.getArgs()+" joinPoint="+joinPoint);
+        return joinPoint.proceed(joinPoint.getArgs());
+    }*/
 
     WeakReference<Object> lastTarget;
     WeakReference<Object> lastArgs = new WeakReference<>(null);
@@ -285,11 +297,10 @@ public class AopAspect {
         String methodName = joinPoint.getSignature().getName();
         if (lastTarget != null && lastTarget.get() == thisTarget && lastArgs.get() == arg) {
             if (TextUtils.equals(lastMethodName, methodName)) {
-                if (joinPoint instanceof ProceedingJoinPoint) {
-                    ((ProceedingJoinPoint) joinPoint).proceed();
-                }
                 return true;
             }
+        }else if(arg!=null && arg.getClass().getSimpleName().contains("Aop")){
+            return true;
         }
         if (lastTarget != null)
             lastTarget.clear();

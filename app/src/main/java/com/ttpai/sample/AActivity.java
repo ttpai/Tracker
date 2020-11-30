@@ -2,6 +2,7 @@ package com.ttpai.sample;
 
 import android.app.Application;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
@@ -17,6 +18,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.databinding.DataBindingUtil;
 
@@ -33,7 +35,7 @@ public class AActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         ActivityMainBinding binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
-        binding.setData(new Person(10, "请打开Pointer.java 查看log"));
+        binding.setData(new Person(10, "请打开Pointer.java 查看log"+"\n请查看 FullPointer.java 查看全局事件监听 示例"));
 
         final TextView view = findViewById(R.id.tv_text);
 
@@ -160,6 +162,23 @@ public class AActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(AActivity.this, DActivity.class));
+            }
+        });
+        findViewById(R.id.button6).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AlertDialog dialog=new AlertDialog.Builder(AActivity.this).setTitle("AlertDialog").setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                    }
+                }).setNegativeButton("取消", null).show();
+
+                v.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        dialog.dismiss();
+                    }
+                },5000);
             }
         });
     }

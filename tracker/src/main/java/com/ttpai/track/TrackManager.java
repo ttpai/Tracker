@@ -6,6 +6,8 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.SparseArray;
 import android.view.ContextThemeWrapper;
@@ -16,6 +18,7 @@ import androidx.fragment.app.Fragment;
 
 import com.ttpai.track.annotation.AnyClass;
 import com.ttpai.track.callback.IFindTrack;
+import com.ttpai.track.callback.OnMainThreadSubscribe;
 import com.ttpai.track.callback.TrackRunnable;
 import com.ttpai.track.node.FromNode;
 import com.ttpai.track.node.FromObjectNode;
@@ -38,7 +41,9 @@ import com.ttpai.track.node.view.ViewClickNode;
 import com.ttpai.track.node.view.ViewLongClickNode;
 import com.ttpai.track.node.view.ViewNode;
 import com.ttpai.track.node.view.ViewVisibilityNode;
+import com.ttpai.tracker.R;
 
+import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,6 +51,7 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+
 
 /**
  * FileName: TrackManager
@@ -74,6 +80,12 @@ public class TrackManager {
     private Application application;
     private Dispatcher mDispatcher;
     public static String ANY_METHOD = "*anyMethod*";
+    public static int ANY_VIEW = R.integer.anyViewId;
+
+    private static boolean isRegisterAnyViewId;
+
+    private WeakReference<Object> targetWeakRef;//调用者弱引用
+    private Handler mainHand;
 
     private TrackManager() {
         mAllRegisterSet = new SparseArray<>();
@@ -87,6 +99,7 @@ public class TrackManager {
         mGrayTrack = new HashMap<>();
 
         mDispatcher = new Dispatcher();
+        mainHand = new Handler(Looper.getMainLooper());
     }
 
     public static TrackManager getInstance() {
@@ -104,36 +117,39 @@ public class TrackManager {
             return;
         this.application = application;
         application.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
+
+            //registerActivityLifecycleCallbacks 会在应用层Activity.onCreate 之前。确保在 应用层Activity.onCreate 代码之后
             @Override
             public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-                activityLifeCycle(activity, NodeSpec.TYPE_ONCREATE);
+                activityLifeMain(activity, NodeSpec.TYPE_ONCREATE);
             }
 
             @Override
             public void onActivityStarted(Activity activity) {
-                activityLifeCycle(activity, NodeSpec.TYPE_ONSTART);
+                activityLifeMain(activity, NodeSpec.TYPE_ONSTART);
             }
 
             @Override
             public void onActivityResumed(Activity activity) {
-                activityLifeCycle(activity, NodeSpec.TYPE_ONRESUMED);
+                activityLifeMain(activity, NodeSpec.TYPE_ONRESUMED);
             }
 
             @Override
             public void onActivityPaused(Activity activity) {
-                activityLifeCycle(activity, NodeSpec.TYPE_ONPAUSE);
+                activityLifeMain(activity, NodeSpec.TYPE_ONPAUSE);
             }
 
             @Override
             public void onActivityStopped(Activity activity) {
-                activityLifeCycle(activity, NodeSpec.TYPE_ONSTOP);
+                activityLifeMain(activity, NodeSpec.TYPE_ONSTOP);
             }
 
             @Override
             public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
-                activityLifeCycle(activity, NodeSpec.TYPE_ONSAVEINSTANCE);
+                activityLifeMain(activity, NodeSpec.TYPE_ONSAVEINSTANCE);
             }
 
+            //onDestroy 可以在之前
             @Override
             public void onActivityDestroyed(Activity activity) {
                 activityLifeCycle(activity, NodeSpec.TYPE_ONDESTROY);
@@ -141,6 +157,19 @@ public class TrackManager {
 
         });
 
+    }
+
+    private void activityLifeMain(final Activity activity,final int lifeCycle) {
+        dispatchToMain(new TrackRunnable() {
+            @Override
+            public void execute() {
+                activityLifeCycle(activity, lifeCycle);
+            }
+        });
+    }
+
+    private void dispatchToMain(TrackRunnable runnable) {
+        mainHand.post(runnable);
     }
 
     Application getApplication() {
@@ -163,8 +192,10 @@ public class TrackManager {
             @Override
             public void execute() {
                 Node rootNode = Track.getRootNode(trackNode);
-                if (rootNode != null)
+                if (rootNode != null) {
+                    removeChildLightTrack(rootNode);
                     mAllTrack.remove(rootNode);
+                }
             }
         });
     }
@@ -174,7 +205,13 @@ public class TrackManager {
     }
 
     void registerViewId(int viewId) {
+        if (!isRegisterAnyViewId && viewId == ANY_VIEW) isRegisterAnyViewId = true;
+
         registerObject(VIEW_ID, viewId);
+    }
+
+    static boolean isRegisterAnyViewId() {
+        return isRegisterAnyViewId;
     }
 
     void registerDialogClass(Class<? extends Dialog> clazz) {
@@ -190,7 +227,7 @@ public class TrackManager {
     }
 
     void registerObject(int type, Object obj) {
-        Set set = (Set) mAllRegisterSet.get(type);
+        Set set = mAllRegisterSet.get(type);
         if (set == null) {
             set = new HashSet<>();
             mAllRegisterSet.put(type, set);
@@ -206,7 +243,6 @@ public class TrackManager {
             mAllRegisterSet.put(APPLICATION_CLASS, set);
         }
     }
-
 
     void startActivity(final Object fromObj, final String toClassName, final Intent intent) {
         execute(new TrackRunnable() {
@@ -227,16 +263,20 @@ public class TrackManager {
                     e.printStackTrace();
                     return;
                 }
+                setTargetWeakRef(fromObj);
 
-                findTrack(from, intent, new IFindTrack() {
-                    @Override
-                    public boolean equalsNode(Node node) {
-                        return node instanceof StartActivityNode && isSupportClass(((StartActivityNode) node).getToClass(), to);
-                    }
-                });
+                findTrack(from, intent,  node -> node instanceof StartActivityNode && isSupportClass(((StartActivityNode) node).getToClass(), to));
 
             }
         });
+    }
+
+    private void setTargetWeakRef(Object fromObj) {
+        targetWeakRef = new WeakReference<>(fromObj);
+    }
+
+    public WeakReference<Object> getTargetWeakRef() {
+        return targetWeakRef;
     }
 
     void startActivityByApplication(final Application application, final String toClassName, final Intent intent) {
@@ -259,6 +299,7 @@ public class TrackManager {
                     e.printStackTrace();
                     return;
                 }
+                setTargetWeakRef(application);
 
                 findTrack(from, intent, new IFindTrack() {
                     @Override
@@ -330,6 +371,7 @@ public class TrackManager {
         executeViewNodeEvent(v, ViewClickNode.class);
     }
 
+    @Deprecated
     void viewSetVisibility(View v) {
         executeViewNodeEvent(v, ViewVisibilityNode.class);
     }
@@ -338,22 +380,28 @@ public class TrackManager {
         executeViewNodeEvent(v, ViewLongClickNode.class);
     }
 
+
     /**
      * viewNode 的统一处理,逻辑一样
      *
      * @param v
      */
     private void executeViewNodeEvent(final View v, final Class<? extends ViewNode> clazz) {
+        if (v == null)
+            return;
+        final View view = v;
+        final int id = view.getId();
+        if (!isRegisterAnyViewId() && !isRegisterViewId(id))
+            return;
+
+        executeAnyViewNode(v, clazz);
+    }
+
+    private void executeAnyViewNode(final View v, final Class<? extends ViewNode> clazz) {
         execute(new TrackRunnable() {
             @Override
             public void execute() {
-                if (v == null || v.getId() == View.NO_ID)
-                    return;
-                final View view = v;
-                //检查是否有注册
-                final int id = view.getId();
-                if (!isRegisterViewId(id))
-                    return;
+                final int id = v.getId();
                 Context context = v.getContext();
                 Class fromClass;
                 //在DialogFragment中，会对activity 进行多层包装
@@ -364,16 +412,19 @@ public class TrackManager {
                     return;
                 fromClass = context.getClass();
 
-                findTrack(fromClass, view, new IFindTrack() {
+                findTrack(fromClass, v, new IFindTrack() {
 
                     @Override
                     public boolean equalsNode(Node node) {
-                        return clazz.isInstance(node) && ((ViewNode) node).getId() == id;
+                        if (!clazz.isInstance(node)) return false;
+                        int nodeId = ((ViewNode) node).getId();
+                        return nodeId == ANY_VIEW || nodeId == id;
                     }
                 });
             }
         });
     }
+
 
     void dialogShow(final Dialog dialog) {
         executeDialogNodeEvent(dialog, ShowDialogNode.class);
@@ -411,7 +462,7 @@ public class TrackManager {
                     @Override
                     public boolean equalsNode(Node node) {
                         return nodeClazz.isInstance(node)
-                                && ((DialogNode) node).getDialogClass() == dialogClass;
+                                && ((DialogNode) node).getDialogClass().isInstance(dialog);
                     }
                 });
             }
@@ -482,6 +533,8 @@ public class TrackManager {
                     }
                 };
                 Object data = args;
+                setTargetWeakRef(target);
+
                 findTrack(null, data, ifind, target, true);
             }
         });
@@ -519,7 +572,7 @@ public class TrackManager {
                     @Override
                     public boolean equalsNode(Node node) {
                         return popClass.isInstance(node)
-                                && ((DialogNode) node).getDialogClass() == dialogClass;
+                                && ((DialogNode) node).getDialogClass().isInstance(popup);
                     }
                 });
             }
@@ -554,18 +607,6 @@ public class TrackManager {
     }
 
     /**
-     * 检查下一个是否是终点SubscribeNode
-     */
-    private <T> boolean checkSubscribeNode(Node node, T data) {
-        /*if (node.next()!=null && node.next().length>0 && node.next()[0] instanceof SubscribeNode) {//终点
-            SubscribeNode subscribeNode = (SubscribeNode) node.next()[0];
-            subscribeNode.getOnSubscribe().call(data);
-            return true;
-        }*/
-        return false;
-    }
-
-    /**
      * 是否为已注册class
      * 如果有AnyClass.class 则直接允许
      *
@@ -573,9 +614,7 @@ public class TrackManager {
      * @return
      */
     public boolean isRegisterActivityClass(Class<Activity> clazz) {
-        Set<?> allRegisterActivity = mAllRegisterSet.get(ACTIVITY_CLASS);
-        return allRegisterActivity != null
-                && (allRegisterActivity.contains(clazz) || allRegisterActivity.contains(Activity.class));
+        return isRegisterObject(ACTIVITY_CLASS, clazz);
     }
 
     /**
@@ -584,12 +623,23 @@ public class TrackManager {
      * @return
      */
     public boolean isRegisterViewId(int id) {
+        if (id == View.NO_ID) return false;
         return isRegisterObject(VIEW_ID, id);
     }
 
     public boolean isRegisterObject(int type, Object obj) {
         Set set = (Set) mAllRegisterSet.get(type);
-        return set != null && set.contains(obj);
+        if (set == null) return false;
+        if (obj instanceof Class) {//只要注册的为目标class 或者 目标的superClass,都算匹配成功
+            Class clazz = (Class) obj;
+            while (clazz != null && clazz != Object.class) {
+                if (set.contains(clazz)) return true;
+                clazz = clazz.getSuperclass();
+            }
+            return false;
+        } else {
+            return set.contains(obj);
+        }
     }
 
     //从所有路径中找到符合的新路径
@@ -597,15 +647,7 @@ public class TrackManager {
         findTrack(fromClass, data, iFind, null, false);
     }
 
-    //兼容 onMethodCall
     private <T> void findTrack(Class fromClass, T data, IFindTrack iFind, Object target, boolean isOnMethodCall) {
-
-        //从所有的track寻找到新的track，并点亮
-        findInAllTracks(fromClass, data, iFind, target, isOnMethodCall);
-    }
-
-
-    private <T> void findInAllTracks(Class fromClass, T data, IFindTrack iFind, Object target, boolean isOnMethodCall) {
 
         lightTrack.clear();
         for (Node node : mAllTrack) {
@@ -630,18 +672,17 @@ public class TrackManager {
 
         for (Node lightNode : lightTrack) {
             Node parent;
-            if ((parent=getFromNode(lightNode))!=null) {
+            if ((parent = getFromNode(lightNode)) != null) {
                 removeChildLightTrack(lightNode);
 
                 removeGrayTrack(parent);
             }
-            if(mGrayTrack.containsKey(lightNode))//已置灰的路径无法点亮
+            if (mGrayTrack.containsKey(lightNode))//已置灰的路径无法点亮
                 continue;
 
             for (Node child : lightNode.children()) {
                 if (child instanceof SubscribeNode) {//终点
-                    SubscribeNode subscribeNode = (SubscribeNode) child;
-                    subscribeNode.getOnSubscribe().call(data);
+                    callSubscribe(data, (SubscribeNode) child);
                 } else {
                     mAllTrack.add(lightNode);
                 }
@@ -649,19 +690,34 @@ public class TrackManager {
         }
     }
 
+    private <T> void callSubscribe(final T data, SubscribeNode child) {
+        final SubscribeNode subscribeNode = child;
+        if(subscribeNode.getOnSubscribe() instanceof OnMainThreadSubscribe){
+            dispatchToMain(new TrackRunnable() {
+                @Override
+                public void execute() {
+                    subscribeNode.getOnSubscribe().call(data);
+                }
+            });
+        }else{
+            subscribeNode.getOnSubscribe().call(data);
+        }
+    }
+
     /**
      * 如果父结点 是from ,返回父结点。如果filter ，则继续向上找
      * 否则返回空
+     *
      * @param node
      * @return
      */
     private Node getFromNode(Node node) {
-        if(node==null)
+        if (node == null)
             return null;
-        Node parent=node.parent();
-        if(parent instanceof FromNode)
+        Node parent = node.parent();
+        if (parent instanceof FromNode)
             return parent;
-        else if(node instanceof FilterNode)
+        else if (node instanceof FilterNode)
             return getFromNode(parent);//递归向上
         return null;
 
@@ -669,20 +725,21 @@ public class TrackManager {
 
     /**
      * 把此节点 中所有置灰的节点，释放出来
+     *
      * @param parent
      */
     private void removeGrayTrack(Node parent) {
-        Iterator<Map.Entry<Node,Node>> iterator= mGrayTrack.entrySet().iterator();
-        while (iterator.hasNext()){
-            Map.Entry<Node,Node> entry= iterator.next();
-            if(entry.getValue()==parent){
+        Iterator<Map.Entry<Node, Node>> iterator = mGrayTrack.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<Node, Node> entry = iterator.next();
+            if (entry.getValue() == parent) {
                 iterator.remove();
             }
         }
     }
 
     //从所以已点亮中，找到所有此node下的子node，熄灭
-    private void removeChildLightTrack(Node lightNode){
+    private void removeChildLightTrack(Node lightNode) {
         Iterator<Node> iterator = mAllTrack.iterator();
         while (iterator.hasNext()) {
             Node node = iterator.next();
@@ -733,41 +790,6 @@ public class TrackManager {
         return false;
     }
 
-    private <T> void findInLightTracks(Class fromClass, T data, IFindTrack iFind, boolean isOnMethodCall) {
-       /* for (LightTrack lightTrack : mLightTracks) {
-            Track track = lightTrack.track;
-            Node[] nexts = lightTrack.mCurrentNode.next();
-            if (nexts!=null) {
-                for(Node next:nexts){
-                    // onMethodCall 结点和其它结点不同处在于，不用对fromClass 判断
-                    boolean isSupport = isOnMethodCall || isSupportClass(next.getFromClass(), fromClass);
-                    if (isSupport && iFind.equalsNode(next)) {//条件满足触发
-
-                        *//*int filterIndex = index + 1;//filter Node 检查
-                        if (next.next()!=null && link.get(filterIndex) instanceof FilterNode) {
-                            FilterNode filterNode = (FilterNode) link.get(filterIndex);
-                            if (!filterNode.getFilter().filter(data)) {
-                                continue;
-                            }
-                            index = filterIndex;
-                        }*//*
-
-                        if (next.next()!=null && next.next().length>0) {
-                            for(Node end:next.next()){
-                                if(end instanceof SubscribeNode){//终点
-                                    SubscribeNode subscribeNode = (SubscribeNode) end;
-                                    subscribeNode.getOnSubscribe().call(data);
-                                }
-                            }
-                        }
-                        lightTrack.mCurrentNode = next;
-                    }
-                }
-
-            }
-        }*/
-    }
-
     void fragmentOnLifeCycle(final int lifeType, final Fragment target) {
         execute(new TrackRunnable() {
             @Override
@@ -812,8 +834,8 @@ public class TrackManager {
         execute(new TrackRunnable() {
             @Override
             public void execute() {
-                if(node!=null){
-                    mGrayTrack.put(node,Track.getRootNode(node));
+                if (node != null) {
+                    mGrayTrack.put(node, Track.getRootNode(node));
                     removeNode(node);
                 }
             }
@@ -822,10 +844,11 @@ public class TrackManager {
 
     /**
      * 从路径中删除 '此结点' 及其 '子结点'
+     *
      * @param node
      */
     private void removeNode(Node node) {
-        if(node==null) return;
+        if (node == null) return;
         mAllTrack.remove(node);
         if (node.children() != null) {
             for (Node child : node.children()) {
@@ -833,6 +856,5 @@ public class TrackManager {
             }
         }
     }
-
 
 }
