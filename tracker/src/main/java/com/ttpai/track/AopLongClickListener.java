@@ -10,10 +10,6 @@ class AopLongClickListener implements View.OnLongClickListener {
         this.l = l;
     }
 
-    public View.OnLongClickListener getOnLongClickener() {
-        return l;
-    }
-
     @Override
     public boolean onLongClick(View v) {
         TrackManager.getInstance().viewLongClick(v);

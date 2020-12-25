@@ -52,7 +52,6 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
-
 /**
  * FileName: TrackManager
  * Author: zhihao.wu@ttpai.cn
@@ -76,6 +75,7 @@ public class TrackManager {
     private static final int APPLICATION_CLASS = 5;
     private static final int POPUP_WINDOW_CLASS = 6;
     static final int FRAGMENT_CLASS = 7;
+    static final int API_SERVICE_CODE = 8;
 
     private Application application;
     private Dispatcher mDispatcher;
@@ -112,6 +112,10 @@ public class TrackManager {
         return sInstance;
     }
 
+    public Dispatcher getDispatcher(){
+        return mDispatcher;
+    }
+
     void initTrack(Application application) {
         if (this.application != null)
             return;
@@ -121,32 +125,32 @@ public class TrackManager {
             //registerActivityLifecycleCallbacks 会在应用层Activity.onCreate 之前。确保在 应用层Activity.onCreate 代码之后
             @Override
             public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-                activityLifeMain(activity, NodeSpec.TYPE_ONCREATE);
+                dispatchToMain(activity, NodeSpec.TYPE_ONCREATE);
             }
 
             @Override
             public void onActivityStarted(Activity activity) {
-                activityLifeMain(activity, NodeSpec.TYPE_ONSTART);
+                dispatchToMain(activity, NodeSpec.TYPE_ONSTART);
             }
 
             @Override
             public void onActivityResumed(Activity activity) {
-                activityLifeMain(activity, NodeSpec.TYPE_ONRESUMED);
+                dispatchToMain(activity, NodeSpec.TYPE_ONRESUMED);
             }
 
             @Override
             public void onActivityPaused(Activity activity) {
-                activityLifeMain(activity, NodeSpec.TYPE_ONPAUSE);
+                dispatchToMain(activity, NodeSpec.TYPE_ONPAUSE);
             }
 
             @Override
             public void onActivityStopped(Activity activity) {
-                activityLifeMain(activity, NodeSpec.TYPE_ONSTOP);
+                dispatchToMain(activity, NodeSpec.TYPE_ONSTOP);
             }
 
             @Override
             public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
-                activityLifeMain(activity, NodeSpec.TYPE_ONSAVEINSTANCE);
+                dispatchToMain(activity, NodeSpec.TYPE_ONSAVEINSTANCE);
             }
 
             //onDestroy 可以在之前
@@ -159,8 +163,8 @@ public class TrackManager {
 
     }
 
-    private void activityLifeMain(final Activity activity,final int lifeCycle) {
-        dispatchToMain(new TrackRunnable() {
+    private void dispatchToMain(Activity activity,int lifeCycle) {
+        mainHand.post(new TrackRunnable() {
             @Override
             public void execute() {
                 activityLifeCycle(activity, lifeCycle);
@@ -168,7 +172,7 @@ public class TrackManager {
         });
     }
 
-    private void dispatchToMain(TrackRunnable runnable) {
+    private void postMainRunnable(TrackRunnable runnable) {
         mainHand.post(runnable);
     }
 
@@ -222,12 +226,16 @@ public class TrackManager {
         registerObject(POPUP_WINDOW_CLASS, popupWindowClass);
     }
 
+    void registerServiceCode(int serviceCode) {
+        registerObject(API_SERVICE_CODE, serviceCode);
+    }
+
     void registerObjectClass(Class clazz) {
         registerObject(OBJECT_CLASS, clazz);
     }
 
     void registerObject(int type, Object obj) {
-        Set set = mAllRegisterSet.get(type);
+        Set set = (Set) mAllRegisterSet.get(type);
         if (set == null) {
             set = new HashSet<>();
             mAllRegisterSet.put(type, set);
@@ -243,6 +251,7 @@ public class TrackManager {
             mAllRegisterSet.put(APPLICATION_CLASS, set);
         }
     }
+
 
     void startActivity(final Object fromObj, final String toClassName, final Intent intent) {
         execute(new TrackRunnable() {
@@ -265,7 +274,7 @@ public class TrackManager {
                 }
                 setTargetWeakRef(fromObj);
 
-                findTrack(from, intent,  node -> node instanceof StartActivityNode && isSupportClass(((StartActivityNode) node).getToClass(), to));
+                findTrack(from, intent, node -> node instanceof StartActivityNode && isSupportClass(((StartActivityNode) node).getToClass(), to));
 
             }
         });
@@ -379,7 +388,6 @@ public class TrackManager {
     void viewLongClick(View v) {
         executeViewNodeEvent(v, ViewLongClickNode.class);
     }
-
 
     /**
      * viewNode 的统一处理,逻辑一样
@@ -588,28 +596,12 @@ public class TrackManager {
         return false;
     }
 
-    private Class getContextClass(View view) {
-        Object context;
-        if ((context = view.getContext()) == null)
-            return null;
-
-        /*Class clazz = context.getClass();
-        while (clazz != Object.class) {
-            if (clazz == Activity.class)
-                return clazz;
-            clazz = clazz.getSuperclass();
-        }*/
-        return context.getClass();
-    }
-
     private void execute(final TrackRunnable runnable) {
         mDispatcher.execute(runnable);
     }
 
     /**
      * 是否为已注册class
-     * 如果有AnyClass.class 则直接允许
-     *
      * @param clazz
      * @return
      */
@@ -644,10 +636,17 @@ public class TrackManager {
 
     //从所有路径中找到符合的新路径
     private <T> void findTrack(Class fromClass, T data, IFindTrack iFind) {
-        findTrack(fromClass, data, iFind, null, false);
+        findInAllTracks(fromClass, data, iFind, null, false);
     }
 
+    //兼容 onMethodCall
     private <T> void findTrack(Class fromClass, T data, IFindTrack iFind, Object target, boolean isOnMethodCall) {
+
+        //从所有的track寻找到新的track，并点亮
+        findInAllTracks(fromClass, data, iFind, target, isOnMethodCall);
+    }
+
+    private <T> void findInAllTracks(Class fromClass, T data, IFindTrack iFind, Object target, boolean isOnMethodCall) {
 
         lightTrack.clear();
         for (Node node : mAllTrack) {
@@ -690,10 +689,10 @@ public class TrackManager {
         }
     }
 
-    private <T> void callSubscribe(final T data, SubscribeNode child) {
-        final SubscribeNode subscribeNode = child;
+    private <T> void callSubscribe(T data, SubscribeNode child) {
+        SubscribeNode subscribeNode = child;
         if(subscribeNode.getOnSubscribe() instanceof OnMainThreadSubscribe){
-            dispatchToMain(new TrackRunnable() {
+            postMainRunnable(new TrackRunnable() {
                 @Override
                 public void execute() {
                     subscribeNode.getOnSubscribe().call(data);

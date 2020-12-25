@@ -4,7 +4,9 @@ import android.app.Activity;
 import android.app.Application;
 import android.app.Dialog;
 import android.content.ComponentName;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.os.Message;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.PopupWindow;
@@ -30,8 +32,6 @@ import java.lang.ref.WeakReference;
  * Author: zhihao.wu@ttpai.cn
  * Date: 2019-08-16
  * Description:
- * <p>
- * <p>
  * //call 调用这个方法，指代码里写了调用，但实际上还没执行
  * //execution 执行这个方法
  * //joinPoint.getTarget(); 调用者
@@ -48,13 +48,20 @@ public class AopAspect {
     //可以兼容lambda.
     @Around("call(public void android.view.View+.setOnClickListener(android.view.View.OnClickListener+)) && target(android.view.View) && args(click)")
     public void setOnClickListenerAround(final ProceedingJoinPoint joinPoint, View.OnClickListener click) throws Throwable {
-        if(click!=null && !filterMethodRepeatEventWithArg(joinPoint,click)){
+        if (click != null && !filterMethodRepeatEventWithArg(joinPoint, click)) {
             joinPoint.proceed(new Object[]{new AopClickListener(click)});
-        }else{
+        } else {
             joinPoint.proceed(new Object[]{click});
         }
     }
 
+    //兼容ClickableSpan
+    @Before("execution(public void android.text.style.ClickableSpan+.onClick(android.view.View+)) && args(view)")
+    public void clickableSpanOnClick(final JoinPoint joinPoint, View view) throws Throwable {
+        if (!filterMethodRepeatEventWithArg(joinPoint, view)) {
+            TrackManager.getInstance().viewClick(view);
+        }
+    }
 
     /*
      @After("call(public void android.view.View+.setVisibility(int)) && target(android.view.View)")
@@ -66,10 +73,10 @@ public class AopAspect {
      }
  */
     @Around("call(public void android.view.View+.setOnLongClickListener(android.view.View.OnLongClickListener+)) && target(android.view.View) && args(click)")
-    public void setOnLongClickListenerAround(final ProceedingJoinPoint joinPoint,final View.OnLongClickListener click) throws Throwable {
-        if(click!=null && !filterMethodRepeatEventWithArg(joinPoint,click)){
+    public void setOnLongClickListenerAround(final ProceedingJoinPoint joinPoint, final View.OnLongClickListener click) throws Throwable {
+        if (click != null && !filterMethodRepeatEventWithArg(joinPoint, click)) {
             joinPoint.proceed(new Object[]{new AopLongClickListener(click)});
-        }else{
+        } else {
             joinPoint.proceed(new Object[]{click});
         }
     }
@@ -82,7 +89,6 @@ public class AopAspect {
     @Before("startActivityForResult3()")
     public void startActivityForResultAround(final JoinPoint joinPoint) throws Throwable {
         if (filterMethodRepeatEventWithArg(joinPoint, joinPoint.getArgs()[0])) return;
-//        Log.d(TAG, "startActivityForResultAround:" + joinPoint.getSourceLocation().getLine() + " " + joinPoint.getTarget() + " " + joinPoint.getThis());
 
         Intent intent = (Intent) joinPoint.getArgs()[0];
         Object thiz = joinPoint.getThis();
@@ -95,7 +101,6 @@ public class AopAspect {
     @Before("call(public void android.content.Context.startActivity(android.content.Intent,..)) && target(android.app.Application)")
     public void startActivityApplicationBefore(final JoinPoint joinPoint) throws Throwable {
         if (filterMethodRepeatEventWithArg(joinPoint, joinPoint.getArgs()[0])) return;
-//        Log.d(TAG, "startActivityApplicationBefore:" + joinPoint.getSourceLocation().getLine() + " " + joinPoint.getTarget() + " " + joinPoint.getThis());
         Intent intent = (Intent) joinPoint.getArgs()[0];
         Application target = (Application) joinPoint.getTarget();
         ComponentName to = intent.getComponent();
@@ -106,43 +111,75 @@ public class AopAspect {
     @Before("call(public void android.app.Activity.finish()) && target(android.app.Activity+)")
     public void onFinish(final JoinPoint joinPoint) throws Throwable {
         if (filterMethodRepeatEvent(joinPoint)) return;
-//        Log.d(TAG, "onFinish:" + joinPoint.getSourceLocation().getLine() + " " + joinPoint.getTarget() + " " + joinPoint.getThis());
-
         TrackManager.getInstance().onFinishActivity((Activity) joinPoint.getTarget());
     }
 
-    //其它dialog
+    //dialog
     @Around("call(public void android.app.Dialog+.show()) && target(android.app.Dialog)")
     public void dialogShowAround(final ProceedingJoinPoint joinPoint) throws Throwable {
         if (filterMethodRepeatEvent(joinPoint)) return;
-//        Log.d(TAG, "dialogShowAround:" + joinPoint.getSourceLocation().getLine() + " " + joinPoint.getTarget() + " " + joinPoint.getThis());
-
+        Dialog dialog = (Dialog) joinPoint.getTarget();
+        setDialogDismissMessage(dialog);
         joinPoint.proceed();//after
-        TrackManager.getInstance().dialogShow((Dialog) joinPoint.getTarget());
+        TrackManager.getInstance().dialogShow(dialog);
     }
 
     //兼容AlertDialog.Builder.show
     @AfterReturning(value = "call(public android.app.AlertDialog android.app.AlertDialog.Builder.show())", returning = "dialog")
     public void showAppAlertDialogBuilderAround(final JoinPoint joinPoint, Dialog dialog) throws Throwable {
         if (filterMethodRepeatEventWithArg(joinPoint, dialog)) return;
-//        Log.d(TAG, "showAppAlertDialogBuilderAround:" + dialog);
+        setDialogDismissMessage(dialog);
         TrackManager.getInstance().dialogShow(dialog);
+
     }
 
-    //dialog.dismiss
-    @After("call(public void android.app.Dialog+.dismiss()) && target(android.app.Dialog)")
-    public void dialogDismissAfter(final JoinPoint joinPoint) throws Throwable {
-        if (filterMethodRepeatEvent(joinPoint)) return;
-//        Log.d(TAG, "dialogDismissAfter:" + joinPoint.getSourceLocation().getLine() + " " + joinPoint.getTarget() + " " + joinPoint.getThis());
-
-        TrackManager.getInstance().dialogDismiss((Dialog) joinPoint.getTarget());
+    private void setDialogDismissMessage(Dialog dialog) {
+        try {//监听onDismiss
+            Message message = Reflect.on(dialog).get("mDismissMessage");
+            if (!AopDialogMessage.isAopMessage(message)) {
+                Message aopMessage = TrackManager.getInstance().getDispatcher().obtain(new AopDialogMessage(message, dialog));
+                if (aopMessage != null)
+                    dialog.setDismissMessage(aopMessage);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
+
+    @Around("call(public void android.app.Dialog+.setDismissMessage(android.os.Message+)) && target(android.app.Dialog) && args(msg)")
+    public void dialogSetDismissMessageAround(final ProceedingJoinPoint joinPoint, Message msg) throws Throwable {
+        if (filterMethodRepeatEventWithArg(joinPoint, msg)) {
+            joinPoint.proceed(new Object[]{msg});
+        } else {
+            Dialog dialog = (Dialog) joinPoint.getTarget();
+            if (!AopDialogMessage.isAopMessage(msg)) {
+                Message aopMessage = TrackManager.getInstance().getDispatcher().obtain(new AopDialogMessage(msg, dialog));
+                joinPoint.proceed(new Object[]{aopMessage});
+            } else {
+                joinPoint.proceed(new Object[]{msg});
+            }
+        }
+    }
+
+    @Around("call(public void android.app.Dialog+.setOnDismissListener(android.content.DialogInterface.OnDismissListener+)) && target(android.app.Dialog) && args(listen)")
+    public void dialogSetOnDismissListenerAround(final ProceedingJoinPoint joinPoint, DialogInterface.OnDismissListener listen) throws Throwable {
+        if (filterMethodRepeatEventWithArg(joinPoint, listen)) {
+            joinPoint.proceed(new Object[]{listen});
+        } else {
+            Dialog dialog = (Dialog) joinPoint.getTarget();
+            joinPoint.proceed(new Object[]{new AopDialogMessage(dialog, listen)});
+
+        }
+    }
+
+    //dialog.dismiss 切不到自动调用dismiss
+//    @After("call(public void android.app.Dialog+.dismiss()) && target(android.app.Dialog)")
+
 
     //dialog button click
     @After(value = "execution(public void android.content.DialogInterface.OnClickListener+.onClick(android.content.DialogInterface+,int))")
     public void dialogButtonClick(final JoinPoint joinPoint) throws Throwable {
         if (filterMethodRepeatEventWithArg(joinPoint, joinPoint.getArgs()[0])) return;
-//        Log.d(TAG, "dialogButtonClick:" + Arrays.toString(joinPoint.getArgs()));
         Object[] args = joinPoint.getArgs();
         if (args[0] instanceof Dialog)
             TrackManager.getInstance().dialogButtonClick((Dialog) args[0], (int) args[1]);
@@ -155,7 +192,6 @@ public class AopAspect {
         if (!(signature instanceof MethodSignature)) {
             return;
         }
-//        Log.d(TAG, "OnMethodCall:" + Arrays.toString(joinPoint.getArgs()) + " :" + joinPoint.getSignature().toLongString() + " " + joinPoint.getTarget() + " " + joinPoint.getThis());
 
         MethodSignature methodSignature = (MethodSignature) signature;
         Class returnClass = methodSignature.getReturnType();
@@ -167,6 +203,7 @@ public class AopAspect {
         TrackManager.getInstance().onMethodCall(returnClass, target, methodName, params, args);
     }
 
+    //popupWindow
     @Pointcut("call(public void android.widget.PopupWindow+.showAsDropDown(..)) && target(android.widget.PopupWindow)")
     public void showAsDropDownPoint() {
     }
@@ -178,22 +215,31 @@ public class AopAspect {
     @Before("showAsDropDownPoint() || showAtLocationPoint()")
     public void popupWindowShow(JoinPoint point) throws Throwable {
         if (filterMethodRepeatEvent(point)) return;
-//        Log.d(TAG, "popupShow:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
         PopupWindow popup = (PopupWindow) point.getTarget();
+        try{
+            PopupWindow.OnDismissListener listener=Reflect.on(popup).get("mOnDismissListener");
+            if(!AopPopupDismissListener.isAopDismiss(listener))
+                popup.setOnDismissListener(new AopPopupDismissListener(listener,popup));
+        }catch (Exception e){
+            e.printStackTrace();
+        }
         TrackManager.getInstance().popupShow(popup);
     }
 
-    @Before("call(public void android.widget.PopupWindow+.dismiss()) && target(android.widget.PopupWindow)")
-    public void popupWindowDismiss(JoinPoint point) throws Throwable {
-        if (filterMethodRepeatEvent(point)) return;
-//        Log.d(TAG, "popupWindowDismiss:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
-        PopupWindow popup = (PopupWindow) point.getTarget();
-        TrackManager.getInstance().popupDismiss(popup);
+
+    @Around("call(public void android.widget.PopupWindow+.setOnDismissListener(android.widget.PopupWindow.OnDismissListener+)) && target(android.widget.PopupWindow) && args(listen)")
+    public void popupSetOnDismissListenerAround(final ProceedingJoinPoint joinPoint, PopupWindow.OnDismissListener listen) throws Throwable {
+        if (filterMethodRepeatEventWithArg(joinPoint, listen)) {
+            joinPoint.proceed(new Object[]{listen});
+        } else {
+            PopupWindow popup = (PopupWindow) joinPoint.getTarget();
+            joinPoint.proceed(new Object[]{new AopPopupDismissListener(listen,popup)});
+        }
     }
+
 
     @After("call(public void androidx.fragment.app.Fragment.onCreate(android.os.Bundle)) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnCreate(JoinPoint point) {
-//        Log.d(TAG, "fragmentOnCreate:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONCREATE, (Fragment) point.getTarget());
     }
 
@@ -206,20 +252,15 @@ public class AopAspect {
     @After("call(public void androidx.fragment.app.Fragment.onStart()) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnStart(JoinPoint point) {
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONSTART, (Fragment) point.getTarget());
-//
-//        Log.d(TAG, "fragmentOnStart:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
     }
 
     @After("call(public void androidx.fragment.app.Fragment.onResume()) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnResume(JoinPoint point) {
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONRESUMED, (Fragment) point.getTarget());
-
-//        Log.d(TAG, "fragmentOnResume:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
     }
 
     @After("call(public void androidx.fragment.app.Fragment.onPause()) && target(androidx.fragment.app.Fragment)")
     public void fragmentPause(JoinPoint point) {
-//        Log.d(TAG, "fragmentPause:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONPAUSE, (Fragment) point.getTarget());
 
     }
@@ -227,44 +268,24 @@ public class AopAspect {
     @After("call(public void androidx.fragment.app.Fragment.onStop()) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnStop(JoinPoint point) {
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONSTOP, (Fragment) point.getTarget());
-//        Log.d(TAG, "fragmentOnStop:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
     }
 
     @Before("call(public void androidx.fragment.app.Fragment.onDestroy()) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnDestroy(JoinPoint point) {
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONDESTROY, (Fragment) point.getTarget());
-//        Log.d(TAG, "fragmentOnDestroy:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
-
     }
 
     @After("call(public void androidx.fragment.app.Fragment.onHiddenChanged(boolean)) && target(androidx.fragment.app.Fragment)")
     public void fragmentOnHiddenChanged(JoinPoint point) {
-//        TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONDESTROY, (Fragment) point.getTarget());
-//        Log.d(TAG, "fragmentOnHiddenChanged:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_ONHIDDENCHANGED, (Fragment) point.getTarget());
     }
-
 
     @After("call(public void androidx.fragment.app.Fragment.setUserVisibleHint(boolean)) && target(androidx.fragment.app.Fragment)")
     public void fragmentSetUserVisible(JoinPoint point) {
         //set 优先，所以after
         TrackManager.getInstance().fragmentOnLifeCycle(NodeSpec.TYPE_SET_USER_VISIBLE, (Fragment) point.getTarget());
-//        Log.d(TAG, "fragmentSetUserVisible:" + Arrays.toString(point.getArgs()) + " :" + point.getSignature().toLongString() + " " + point.getTarget() + " " + point.getThis());
-
     }
 
-/*
-    @Around("call(* com.ttpai.sample.Tools.test(java.lang.String)) && args(arg)")
-    public void onTestAround(final ProceedingJoinPoint joinPoint,String arg) throws Throwable {
-        System.out.println("onTestAround 1 args="+joinPoint.getArgs()+" joinPoint="+joinPoint+" "+arg);
-        joinPoint.proceed(new Object[]{"aaa"+arg});
-    }
-
-    @Around("call(public com.ttpai.sample.OnScrollListener+.new(..))")
-    public Object onOnScrollListenerAround(final ProceedingJoinPoint joinPoint) throws Throwable {
-        System.out.println("newOnScrollListener  args="+joinPoint.getArgs()+" joinPoint="+joinPoint);
-        return joinPoint.proceed(joinPoint.getArgs());
-    }*/
 
     WeakReference<Object> lastTarget;
     WeakReference<Object> lastArgs = new WeakReference<>(null);
@@ -299,7 +320,7 @@ public class AopAspect {
             if (TextUtils.equals(lastMethodName, methodName)) {
                 return true;
             }
-        }else if(arg!=null && arg.getClass().getSimpleName().contains("Aop")){
+        } else if (arg != null && arg.getClass().getSimpleName().startsWith("Aop")) {
             return true;
         }
         if (lastTarget != null)

@@ -274,9 +274,6 @@ public class Track<T> {
     }
 
     private <T> Track<T> add(Node node) {
-        /*while (mNode instanceof SubscribeNode) {
-            mNode = mNode.parent();
-        }*/
         node.setParent(mNode);
 
         List<Node> children = this.mNode.children();
@@ -303,7 +300,6 @@ public class Track<T> {
     }
 
     //dialog.dismiss event
-    //TODO 目前只能监听用户主动调用 .dismiss的事件，如果点击positive 按钮或点击外面消失，则无法监听
     public Track<Dialog> dialogDismiss(Class<? extends Dialog> dialogClass) {
         checkClass(Dialog.class, dialogClass);
 
@@ -446,6 +442,9 @@ public class Track<T> {
         });
     }
 
+
+
+
     /**
      * 熄灭该路径，意味着从头开始点亮
      */
@@ -479,6 +478,8 @@ public class Track<T> {
     }
 
     public Track<PopupWindow> popupWindowShow(Class<? extends PopupWindow> popupWindowClass) {
+        checkClass(PopupWindow.class, popupWindowClass);
+
         TrackManager.getInstance().registerPopupClass(popupWindowClass);
         Class fromClass = getFromClass();
         checkActivityClass(fromClass);
@@ -486,6 +487,8 @@ public class Track<T> {
     }
 
     public Track<PopupWindow> popupWindowDismiss(Class<? extends PopupWindow> popupWindowClass) {
+        checkClass(PopupWindow.class, popupWindowClass);
+
         TrackManager.getInstance().registerPopupClass(popupWindowClass);
         Class fromClass = getFromClass();
         checkActivityClass(fromClass);
@@ -540,7 +543,7 @@ public class Track<T> {
         return addFragmentLifeCycleNode(fragmentClass, NodeSpec.TYPE_ONHIDDENCHANGED);
     }
 
-    public Track<Fragment> fragmentOnHiddenChanged(Class<? extends Fragment> fragmentClass,final boolean filterIsHidden) {
+    public Track<Fragment> fragmentOnHiddenChanged(Class<? extends Fragment> fragmentClass,boolean filterIsHidden) {
         return fragmentOnHiddenChanged(fragmentClass).filter(new IFilter<Fragment>() {
             @Override
             public boolean filter(Fragment fragment) {
@@ -559,7 +562,7 @@ public class Track<T> {
         return addFragmentLifeCycleNode(fragmentClass, NodeSpec.TYPE_SET_USER_VISIBLE);
     }
 
-    public Track<Fragment> fragmentSetUserVisibleHint(Class<? extends Fragment> fragmentClass,final boolean filterIsVisibleToUser) {
+    public Track<Fragment> fragmentSetUserVisibleHint(Class<? extends Fragment> fragmentClass,boolean filterIsVisibleToUser) {
         return fragmentSetUserVisibleHint(fragmentClass).filter(new IFilter<Fragment>() {
             @Override
             public boolean filter(Fragment fragment) {
