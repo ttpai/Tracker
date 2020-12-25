@@ -18,8 +18,8 @@ import com.ttpai.track.Track;
 import com.ttpai.track.annotation.DialogButtonID;
 import com.ttpai.track.callback.IFilter;
 import com.ttpai.track.callback.OnEvent;
+import com.ttpai.track.callback.OnMainThreadSubscribe;
 import com.ttpai.track.callback.OnSubscribe;
-import com.ttpai.track.callback.OnTrackSubscribe;
 
 import java.util.Arrays;
 
@@ -89,15 +89,15 @@ public class Pointer {
             }
         });
 
-        Track<Intent> track = Track.from(AActivity.class).to(BActivity.class).subscribe(new OnTrackSubscribe<Intent>() {
+        Track<Intent> track = Track.from(AActivity.class).to(BActivity.class).subscribe(new com.ttpai.track.callback.OnTargetSubscribe<Intent>() {
             @Override
             public void call(Intent intent) {
-                Log.d(TAG, "A->B subscribe intent=" + intent + " t=" + Thread.currentThread() + " trackName=" + getTrackName());
+                Log.d(TAG, "A->B subscribe intent=" + intent + " t=" + Thread.currentThread() + " target=" + getTarget().get());
 
             }
         });
 //        track.unsubscribe();
-        track.dialogShow(Dialog.class).subscribe(new OnSubscribe<Dialog>() {
+        track.dialogShow(Dialog.class).subscribe(new OnMainThreadSubscribe<Dialog>() {
             @Override
             public void call(Dialog dialog) {
                 Log.d(TAG, "A->B.dialogShow dialog=" + dialog + " t=" + Thread.currentThread());
@@ -110,7 +110,7 @@ public class Pointer {
                 Log.d(TAG, "A->B.dialogShow.positiveClick dialog=" + dialog + " t=" + Thread.currentThread());
             }
         });
-        //这里对两个按钮分别监听，则必须要copyTrack
+        //这里对两个按钮分别监听
         track.dialogButtonClick(DialogButtonID.BUTTON_NEGATIVE).subscribe(new OnSubscribe<Dialog>() {
             @Override
             public void call(Dialog dialog) {
@@ -429,7 +429,7 @@ public class Pointer {
         });
 
 
-        Track<?> mainTrack = Track.from(TabFragmentActivity.class).fragmentSetUserVisibleHint(MainFragment.class).filter(fragment -> fragment.getUserVisibleHint())
+        Track<?> mainTrack = Track.from(TabFragmentActivity.class).fragmentSetUserVisibleHint(MainFragment.class,true)
                 .mutexWith(Track.from(TabFragmentActivity.class).fragmentSetUserVisibleHint(MainFragment.class).filter(fragment -> !fragment.getUserVisibleHint()));
 
         mainTrack.viewClick(R.id.button6)
